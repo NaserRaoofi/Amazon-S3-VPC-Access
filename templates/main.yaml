@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Parent stack for VPC, Internet Gateway
+
+Resources:
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/vpc.yaml
+
+  IGWStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/igw.yaml
+      Parameters:
+        VPCId: !GetAtt VPCStack.Outputs.VPCId
+
+Outputs:
+  VPCId:
+    Description: The ID of the created VPC
+    Value: !GetAtt VPCStack.Outputs.VPCId
+
+  InternetGatewayId:
+    Description: The ID of the created Internet Gateway
+    Value: !GetAtt IGWStack.Outputs.InternetGatewayId
