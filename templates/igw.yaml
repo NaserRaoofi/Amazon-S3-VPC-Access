@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates an Internet Gateway and attaches it to an existing VPC
+
+Parameters:
+  VPCId:
+    Type: String
+    Description: The ID of the existing VPC
+
+Resources:
+  MyInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: MyInternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPCId
+      InternetGatewayId: !Ref MyInternetGateway
+
+Outputs:
+  InternetGatewayId:
+    Description: The ID of the created Internet Gateway
+    Value: !Ref MyInternetGateway
