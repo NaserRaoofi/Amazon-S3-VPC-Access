@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a Public and Private Subnet inside an existing VPC in the same Availability Zone.
+
+Parameters:
+  VPCId:
+    Type: String
+    Description: The ID of the existing VPC
+
+  PublicSubnetCidr:
+    Type: String
+    Default: "10.0.1.0/24"
+    Description: The CIDR block for the public subnet
+
+  PrivateSubnetCidr:
+    Type: String
+    Default: "10.0.2.0/24"
+    Description: The CIDR block for the private subnet
+
+  AvailabilityZone:
+    Type: String
+    Description: The Availability Zone for both subnets
+
+Resources:
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCId
+      CidrBlock: !Ref PublicSubnetCidr
+      AvailabilityZone: !Ref AvailabilityZone
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: PublicSubnet
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCId
+      CidrBlock: !Ref PrivateSubnetCidr
+      AvailabilityZone: !Ref AvailabilityZone
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet
+
+Outputs:
+  PublicSubnetId:
+    Description: The ID of the created Public Subnet
+    Value: !Ref PublicSubnet
+
+  PrivateSubnetId:
+    Description: The ID of the created Private Subnet
+    Value: !Ref PrivateSubnet

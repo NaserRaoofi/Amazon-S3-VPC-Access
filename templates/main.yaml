@@ -1,18 +1,62 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Parent stack for VPC, Internet Gateway
+Description: Parent stack for VPC, Internet Gateway, Subnets, Route Tables, Security Groups, and EC2 instances
 
 Resources:
+  # VPC Stack
   VPCStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/vpc.yaml
 
+  # Internet Gateway Stack
   IGWStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/igw.yaml
       Parameters:
         VPCId: !GetAtt VPCStack.Outputs.VPCId
+
+  # Security Group Stack
+  SecurityGroupStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/sg.yaml
+      Parameters:
+        VPCId: !GetAtt VPCStack.Outputs.VPCId
+
+  # Subnet Stack (Creates Public & Private Subnets)
+  SubnetStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/subnet.yaml
+      Parameters:
+        VPCId: !GetAtt VPCStack.Outputs.VPCId
+        PublicSubnetCidr: "10.0.1.0/24"
+        PrivateSubnetCidr: "10.0.2.0/24"
+        AvailabilityZone: "eu-west-2a"
+
+  # Route Table Stack (Handles Public & Private Routes)
+  RouteTableStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/rt.yaml
+      Parameters:
+        VPCId: !GetAtt VPCStack.Outputs.VPCId
+        PublicSubnetId: !GetAtt SubnetStack.Outputs.PublicSubnetId
+        PrivateSubnetId: !GetAtt SubnetStack.Outputs.PrivateSubnetId
+        InternetGatewayId: !GetAtt IGWStack.Outputs.InternetGatewayId
+
+  # EC2 Stack (Creates Bastion EC2 and Private EC2)
+  EC2Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/ec2.yaml
+      Parameters:
+        VPCId: !GetAtt VPCStack.Outputs.VPCId
+        PublicSubnetId: !GetAtt SubnetStack.Outputs.PublicSubnetId
+        PrivateSubnetId: !GetAtt SubnetStack.Outputs.PrivateSubnetId
+        BastionSecurityGroupId: !GetAtt SecurityGroupStack.Outputs.BastionSecurityGroupId
+        PrivateEC2SecurityGroupId: !GetAtt SecurityGroupStack.Outputs.PrivateEC2SecurityGroupId
 
 Outputs:
   VPCId:
@@ -22,3 +66,35 @@ Outputs:
   InternetGatewayId:
     Description: The ID of the created Internet Gateway
     Value: !GetAtt IGWStack.Outputs.InternetGatewayId
+
+  PublicSubnetId:
+    Description: The ID of the Public Subnet
+    Value: !GetAtt SubnetStack.Outputs.PublicSubnetId
+
+  PrivateSubnetId:
+    Description: The ID of the Private Subnet
+    Value: !GetAtt SubnetStack.Outputs.PrivateSubnetId
+
+  PublicRouteTableId:
+    Description: The ID of the Public Route Table
+    Value: !GetAtt RouteTableStack.Outputs.PublicRouteTableId
+
+  PrivateRouteTableId:
+    Description: The ID of the Private Route Table
+    Value: !GetAtt RouteTableStack.Outputs.PrivateRouteTableId
+
+  BastionSecurityGroupId:
+    Description: The ID of the Bastion Security Group
+    Value: !GetAtt SecurityGroupStack.Outputs.BastionSecurityGroupId
+
+  PrivateEC2SecurityGroupId:
+    Description: The ID of the Private EC2 Security Group
+    Value: !GetAtt SecurityGroupStack.Outputs.PrivateEC2SecurityGroupId
+
+  BastionInstanceId:
+    Description: The ID of the Bastion EC2 instance
+    Value: !GetAtt EC2Stack.Outputs.BastionInstanceId
+
+  PrivateEC2InstanceId:
+    Description: The ID of the Private EC2 instance
+    Value: !GetAtt EC2Stack.Outputs.PrivateEC2InstanceId
