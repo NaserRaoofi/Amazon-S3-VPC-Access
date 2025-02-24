@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates Security Groups for Bastion and Private EC2 Instances
+
+Parameters:
+  VPCId:
+    Type: String
+    Description: The ID of the existing VPC
+
+Resources:
+  ## 🏰 Bastion Security Group (Public EC2)
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for Bastion Host (Public EC2)"
+      VpcId: !Ref VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 94.197.208.189/32
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0  # Allow all outbound
+      Tags:
+        - Key: Name
+          Value: "BastionSecurityGroup"
+
+  ## 🔒 Private EC2 Security Group
+  PrivateEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for Private EC2 (Only allows SSH from Bastion)"
+      VpcId: !Ref VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionSecurityGroup  # Allow SSH only from Bastion
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0  # Allow all outbound
+      Tags:
+        - Key: Name
+          Value: "PrivateEC2SecurityGroup"
+
+Outputs:
+  BastionSecurityGroupId:
+    Description: The ID of the Bastion Security Group
+    Value: !Ref BastionSecurityGroup
+
+  PrivateEC2SecurityGroupId:
+    Description: The ID of the Private EC2 Security Group
+    Value: !Ref PrivateEC2SecurityGroup

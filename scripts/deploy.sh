@@ -5,11 +5,20 @@ STACK_NAME="MainStack"
 S3_BUCKET="developer-bucket-v1"
 VPC_TEMPLATE="code/vpc.yaml"
 IGW_TEMPLATE="code/igw.yaml"
+SUBNET_TEMPLATE="code/subnet.yaml"
+ROUTE_TABLE_TEMPLATE="code/rt.yaml"
+SECURITY_GROUP_TEMPLATE="code/sg.yaml"
+MAIN_TEMPLATE="code/main.yaml"
+EC2_TEMPLATE="code/ec2.yaml"  # Add EC2 template
 
 # Convert Unix path to Windows path (for AWS CLI compatibility in Git Bash)
-PARENT_TEMPLATE="$(cygpath -w '/e/aws Lab projects/Amazon-S3-VPC-Access/templates/main.yaml')"
-CHILD_TEMPLATE_VPC="$(cygpath -w '/e/aws Lab projects/Amazon-S3-VPC-Access/templates/vpc.yaml')"
-CHILD_TEMPLATE_IGW="$(cygpath -w '/e/aws Lab projects/Amazon-S3-VPC-Access/templates/igw.yaml')"
+PARENT_TEMPLATE="$(cygpath -w '/e/AwsLabProjects/Amazon-S3-VPC-Access/templates/main.yaml')"
+CHILD_TEMPLATE_VPC="$(cygpath -w '/e/AwsLabProjects/Amazon-S3-VPC-Access/templates/vpc.yaml')"
+CHILD_TEMPLATE_IGW="$(cygpath -w '/e/AwsLabProjects/Amazon-S3-VPC-Access/templates/igw.yaml')"
+CHILD_TEMPLATE_SUBNET="$(cygpath -w '/e/AwsLabProjects/Amazon-S3-VPC-Access/templates/subnet.yaml')"
+CHILD_TEMPLATE_RT="$(cygpath -w '/e/AwsLabProjects/Amazon-S3-VPC-Access/templates/rt.yaml')"
+CHILD_TEMPLATE_SG="$(cygpath -w '/e/AwsLabProjects/Amazon-S3-VPC-Access/templates/sg.yaml')"
+CHILD_TEMPLATE_EC2="$(cygpath -w '/e/AwsLabProjects/Amazon-S3-VPC-Access/templates/ec2.yaml')"  # Add EC2 template path
 
 # Ensure AWS CLI is installed
 if ! command -v aws &> /dev/null; then
@@ -18,22 +27,22 @@ if ! command -v aws &> /dev/null; then
 fi
 
 # Ensure template files exist
-if [[ ! -f "$CHILD_TEMPLATE_VPC" ]]; then
-    echo "❌ ERROR: vpc.yaml not found at $CHILD_TEMPLATE_VPC"
-    exit 1
-fi
+for FILE in "$CHILD_TEMPLATE_VPC" "$CHILD_TEMPLATE_IGW" "$CHILD_TEMPLATE_SUBNET" "$CHILD_TEMPLATE_RT" "$CHILD_TEMPLATE_SG" "$CHILD_TEMPLATE_EC2" "$PARENT_TEMPLATE"; do
+    if [[ ! -f "$FILE" ]]; then
+        echo "❌ ERROR: Template file not found at $FILE"
+        exit 1
+    fi
+done
 
-if [[ ! -f "$CHILD_TEMPLATE_IGW" ]]; then
-    echo "❌ ERROR: igw.yaml not found at $CHILD_TEMPLATE_IGW"
-    exit 1
-fi
-
-# Upload VPC and IGW templates to S3
-echo "📤 Uploading vpc.yaml to S3..."
+# Upload all CloudFormation templates to S3
+echo "📤 Uploading templates to S3..."
 aws s3 cp "$CHILD_TEMPLATE_VPC" s3://$S3_BUCKET/$VPC_TEMPLATE --acl private
-
-echo "📤 Uploading igw.yaml to S3..."
 aws s3 cp "$CHILD_TEMPLATE_IGW" s3://$S3_BUCKET/$IGW_TEMPLATE --acl private
+aws s3 cp "$CHILD_TEMPLATE_SUBNET" s3://$S3_BUCKET/$SUBNET_TEMPLATE --acl private
+aws s3 cp "$CHILD_TEMPLATE_RT" s3://$S3_BUCKET/$ROUTE_TABLE_TEMPLATE --acl private
+aws s3 cp "$CHILD_TEMPLATE_SG" s3://$S3_BUCKET/$SECURITY_GROUP_TEMPLATE --acl private
+aws s3 cp "$CHILD_TEMPLATE_EC2" s3://$S3_BUCKET/$EC2_TEMPLATE --acl private  # Upload EC2 template
+aws s3 cp "$PARENT_TEMPLATE" s3://$S3_BUCKET/$MAIN_TEMPLATE --acl private
 
 # Check if the parent stack exists
 STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null)
@@ -55,23 +64,38 @@ else
     exit 1
 fi
 
-# Retrieve VPC and IGW IDs
-VPC_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME \
-    --query "Stacks[0].Outputs[?OutputKey=='VPCId'].OutputValue" --output text)
+# Retrieve Resource IDs
+VPC_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='VPCId'].OutputValue" --output text)
+IGW_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='InternetGatewayId'].OutputValue" --output text)
+PUBLIC_SUBNET_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='PublicSubnetId'].OutputValue" --output text)
+PRIVATE_SUBNET_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='PrivateSubnetId'].OutputValue" --output text)
+PUBLIC_RT_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='PublicRouteTableId'].OutputValue" --output text)
+PRIVATE_RT_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='PrivateRouteTableId'].OutputValue" --output text)
+BASTION_SG_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='BastionSecurityGroupId'].OutputValue" --output text)
+PRIVATE_EC2_SG_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='PrivateEC2SecurityGroupId'].OutputValue" --output text)
+BASTION_INSTANCE_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='BastionInstanceId'].OutputValue" --output text)
+PRIVATE_EC2_INSTANCE_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='PrivateEC2InstanceId'].OutputValue" --output text)
 
-IGW_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME \
-    --query "Stacks[0].Outputs[?OutputKey=='InternetGatewayId'].OutputValue" --output text)
-
-if [[ -z "$VPC_ID" ]]; then
-    echo "❌ ERROR: Failed to retrieve VPC ID."
+# Wait for EC2 instances to be running (both Bastion and Private EC2)
+while true; do
+  # Ensure the EC2 Instance ID is not empty or "None"
+  if [[ -z "$BASTION_INSTANCE_ID" || "$BASTION_INSTANCE_ID" == "None" ]]; then
+    echo "❌ ERROR: Bastion EC2 Instance ID not found."
     exit 1
-else
-    echo "✅ VPC Created Successfully! VPC ID: $VPC_ID"
-fi
-
-if [[ -z "$IGW_ID" ]]; then
-    echo "❌ ERROR: Failed to retrieve Internet Gateway ID."
+  fi
+  if [[ -z "$PRIVATE_EC2_INSTANCE_ID" || "$PRIVATE_EC2_INSTANCE_ID" == "None" ]]; then
+    echo "❌ ERROR: Private EC2 Instance ID not found."
     exit 1
-else
-    echo "✅ Internet Gateway Created Successfully! IGW ID: $IGW_ID"
-fi
+  fi
+  
+  BASTION_STATE=$(aws ec2 describe-instances --instance-ids "$BASTION_INSTANCE_ID" --query "Reservations[0].Instances[0].State.Name" --output text)
+  PRIVATE_EC2_STATE=$(aws ec2 describe-instances --instance-ids "$PRIVATE_EC2_INSTANCE_ID" --query "Reservations[0].Instances[0].State.Name" --output text)
+
+  if [[ "$BASTION_STATE" == "running" && "$PRIVATE_EC2_STATE" == "running" ]]; then
+    echo "✅ Both Bastion and Private EC2 instances are running."
+    break
+  else
+    echo "⏳ Waiting for EC2 instances to be running..."
+    sleep 30  # Wait 30 seconds before checking again
+  fi
+done

@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates Public and Private Route Tables and associates them with respective subnets
+
+Parameters:
+  VPCId:
+    Type: String
+    Description: The ID of the existing VPC
+
+  PublicSubnetId:
+    Type: String
+    Description: The ID of the public subnet
+
+  PrivateSubnetId:
+    Type: String
+    Description: The ID of the private subnet
+
+  InternetGatewayId:
+    Type: String
+    Description: The ID of the Internet Gateway for public internet access
+
+Resources:
+  ## 🛠️ Public Route Table
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCId
+      Tags:
+        - Key: Name
+          Value: PublicRouteTable
+
+  ## 🔗 Public Route (Routes Internet Traffic to IGW)
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGatewayId
+
+  ## 🔗 Associate Public Subnet with Public Route Table
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetId
+      RouteTableId: !Ref PublicRouteTable
+
+  ## 🛠️ Private Route Table (No Internet Route)
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCId
+      Tags:
+        - Key: Name
+          Value: PrivateRouteTable
+
+  ## 🔗 Associate Private Subnet with Private Route Table
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetId
+      RouteTableId: !Ref PrivateRouteTable
+
+Outputs:
+  PublicRouteTableId:
+    Description: The ID of the created Public Route Table
+    Value: !Ref PublicRouteTable
+
+  PrivateRouteTableId:
+    Description: The ID of the created Private Route Table
+    Value: !Ref PrivateRouteTable

@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create EC2 instances in public and private subnets
+
+Parameters:
+  VPCId:
+    Type: String
+    Description: The ID of the existing VPC
+
+  PublicSubnetId:
+    Type: String
+    Description: The ID of the public subnet
+
+  PrivateSubnetId:
+    Type: String
+    Description: The ID of the private subnet
+
+  BastionSecurityGroupId:
+    Type: String
+    Description: The security group for Bastion EC2 instance
+
+  PrivateEC2SecurityGroupId:
+    Type: String
+    Description: The security group for the Private EC2 instance
+
+Resources:
+  ## Public EC2 Bastion Host
+  BastionHost:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-00710ab5544b60cf7  # Replace with your own AMI ID
+      KeyName: ec2-key-pair  # Replace with your own SSH key pair
+      SubnetId: !Ref PublicSubnetId
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroupId
+      Tags:
+        - Key: Name
+          Value: BastionHost
+
+  ## Private EC2 Instance
+  PrivateEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-00710ab5544b60cf7  # Replace with your own AMI ID
+      KeyName: bastion-key-pair  # Replace with your own SSH key pair
+      SubnetId: !Ref PrivateSubnetId
+      SecurityGroupIds:
+        - !Ref PrivateEC2SecurityGroupId
+      Tags:
+        - Key: Name
+          Value: PrivateEC2Instance
+
+Outputs:
+  BastionInstanceId:
+    Description: The ID of the Bastion EC2 instance
+    Value: !Ref BastionHost
+
+  PrivateEC2InstanceId:
+    Description: The ID of the Private EC2 instance
+    Value: !Ref PrivateEC2Instance
