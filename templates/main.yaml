@@ -35,7 +35,16 @@ Resources:
         PrivateSubnetCidr: "10.0.2.0/24"
         AvailabilityZone: "eu-west-2a"
 
-  # Route Table Stack (Handles Public & Private Routes)
+  # S3 Gateway Endpoint Stack (NEW)
+  S3EndpointStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/s3endpoint.yaml
+      Parameters:
+        VPCId: !GetAtt VPCStack.Outputs.VPCId
+        RouteTableId: !GetAtt RouteTableStack.Outputs.PrivateRouteTableId
+
+ # Route Table Stack (Handles Public & Private Routes)
   RouteTableStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -82,6 +91,10 @@ Outputs:
   PrivateRouteTableId:
     Description: The ID of the Private Route Table
     Value: !GetAtt RouteTableStack.Outputs.PrivateRouteTableId
+
+  S3EndpointId:
+    Description: The ID of the S3 Gateway Endpoint
+    Value: !GetAtt RouteTableStack.Outputs.S3EndpointId  # ✅ Now references RouteTableStack
 
   BastionSecurityGroupId:
     Description: The ID of the Bastion Security Group

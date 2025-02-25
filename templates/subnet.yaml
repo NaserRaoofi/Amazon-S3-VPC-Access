@@ -21,6 +21,7 @@ Parameters:
     Description: The Availability Zone for both subnets
 
 Resources:
+  ## 🏗 Public Subnet (MapPublicIpOnLaunch is True)
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
@@ -32,6 +33,7 @@ Resources:
         - Key: Name
           Value: PublicSubnet
 
+  ## 🏗 Private Subnet (No Public IP)
   PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
@@ -51,3 +53,9 @@ Outputs:
   PrivateSubnetId:
     Description: The ID of the created Private Subnet
     Value: !Ref PrivateSubnet
+  
+  PublicSubnetCidr:
+    Description: The CIDR block of the public subnet
+    Value: !Ref PublicSubnetCidr
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSubnetCidr"
