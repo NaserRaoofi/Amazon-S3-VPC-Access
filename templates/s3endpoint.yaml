@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates an S3 Gateway Endpoint.
+
+Parameters:
+  VPCId:
+    Type: String
+    Description: The ID of the existing VPC
+
+  RouteTableId:
+    Type: String
+    Description: The Route Table ID for private subnets
+
+Resources:
+  ## 🔗 S3 Gateway Endpoint (For Private EC2 to Access S3 Privately)
+  S3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPCId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref RouteTableId
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - "s3:GetObject"
+              - "s3:ListBucket"
+            Resource:
+              - "arn:aws:s3:::developer-bucket-v1"
+              - "arn:aws:s3:::developer-bucket-v1/*"
+      Tags:
+        - Key: Name
+          Value: S3GatewayEndpoint
+
+Outputs:
+  S3EndpointId:
+    Description: The ID of the S3 Gateway Endpoint
+    Value: !Ref S3Endpoint

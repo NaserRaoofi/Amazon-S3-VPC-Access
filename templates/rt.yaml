@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Creates Public and Private Route Tables and associates them with respective subnets
+Description: Creates Public and Private Route Tables, associates them with subnets, and adds an S3 Gateway Endpoint
 
 Parameters:
   VPCId:
@@ -16,7 +16,7 @@ Parameters:
 
   InternetGatewayId:
     Type: String
-    Description: The ID of the Internet Gateway for public internet access
+    Description: The ID of the Internet Gateway
 
 Resources:
   ## 🛠️ Public Route Table
@@ -43,7 +43,7 @@ Resources:
       SubnetId: !Ref PublicSubnetId
       RouteTableId: !Ref PublicRouteTable
 
-  ## 🛠️ Private Route Table (No Internet Route)
+  ## 🛠️ Private Route Table
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -59,11 +59,28 @@ Resources:
       SubnetId: !Ref PrivateSubnetId
       RouteTableId: !Ref PrivateRouteTable
 
+  ## 🌐 S3 Gateway Endpoint (Moved from S3EndpointStack)
+  S3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPCId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateRouteTable  # Attach to the private route table
+      Tags:
+        - Key: Name
+          Value: S3GatewayEndpoint
+
 Outputs:
   PublicRouteTableId:
     Description: The ID of the created Public Route Table
     Value: !Ref PublicRouteTable
 
   PrivateRouteTableId:
-    Description: The ID of the created Private Route Table
+    Description: The ID of the Private Route Table
     Value: !Ref PrivateRouteTable
+
+  S3EndpointId:
+    Description: The ID of the S3 Gateway Endpoint
+    Value: !Ref S3Endpoint

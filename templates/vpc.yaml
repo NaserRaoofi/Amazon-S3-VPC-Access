@@ -1,7 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Creates a simple VPC
+Description: Creates a simple VPC.
 
 Resources:
+  ## 🌐 Create VPC
   MyVPC:
     Type: AWS::EC2::VPC
     Properties:
