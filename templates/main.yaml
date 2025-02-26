@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Parent stack for VPC, Internet Gateway, Subnets, Route Tables, Security Groups, and EC2 instances
+Description: Parent stack for VPC, Internet Gateway, Subnets, Route Tables, Security Groups, and EC2 instances.
 
 Resources:
   # VPC Stack
@@ -8,25 +8,28 @@ Resources:
     Properties:
       TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/vpc.yaml
 
-  # Internet Gateway Stack
+  # Internet Gateway Stack (Depends on VPCStack)
   IGWStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn: VPCStack
     Properties:
       TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/igw.yaml
       Parameters:
         VPCId: !GetAtt VPCStack.Outputs.VPCId
 
-  # Security Group Stack
+  # Security Group Stack (Depends on VPCStack)
   SecurityGroupStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn: VPCStack
     Properties:
       TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/sg.yaml
       Parameters:
         VPCId: !GetAtt VPCStack.Outputs.VPCId
 
-  # Subnet Stack (Creates Public & Private Subnets)
+  # Subnet Stack (Depends on VPCStack)
   SubnetStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn: VPCStack
     Properties:
       TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/subnet.yaml
       Parameters:
@@ -35,18 +38,12 @@ Resources:
         PrivateSubnetCidr: "10.0.2.0/24"
         AvailabilityZone: "eu-west-2a"
 
-  # S3 Gateway Endpoint Stack (NEW)
-  S3EndpointStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/s3endpoint.yaml
-      Parameters:
-        VPCId: !GetAtt VPCStack.Outputs.VPCId
-        RouteTableId: !GetAtt RouteTableStack.Outputs.PrivateRouteTableId
-
- # Route Table Stack (Handles Public & Private Routes)
+  # Route Table Stack (Must be created before S3EndpointStack)
   RouteTableStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - IGWStack
+      - SubnetStack
     Properties:
       TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/rt.yaml
       Parameters:
@@ -55,9 +52,22 @@ Resources:
         PrivateSubnetId: !GetAtt SubnetStack.Outputs.PrivateSubnetId
         InternetGatewayId: !GetAtt IGWStack.Outputs.InternetGatewayId
 
-  # EC2 Stack (Creates Bastion EC2 and Private EC2)
+  # S3 Gateway Endpoint Stack (Must be created after Route Table Stack)
+  S3EndpointStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: RouteTableStack  # ✅ Ensures Route Table is created first
+    Properties:
+      TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/s3endpoint.yaml
+      Parameters:
+        VPCId: !GetAtt VPCStack.Outputs.VPCId
+        RouteTableId: !GetAtt RouteTableStack.Outputs.PrivateRouteTableId
+
+  # EC2 Stack (Creates Bastion EC2 and Private EC2, Depends on Security Groups and Subnets)
   EC2Stack:
     Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - SecurityGroupStack
+      - SubnetStack
     Properties:
       TemplateURL: https://developer-bucket-v1.s3.eu-west-2.amazonaws.com/code/ec2.yaml
       Parameters:
@@ -94,7 +104,7 @@ Outputs:
 
   S3EndpointId:
     Description: The ID of the S3 Gateway Endpoint
-    Value: !GetAtt RouteTableStack.Outputs.S3EndpointId  # ✅ Now references RouteTableStack
+    Value: !GetAtt S3EndpointStack.Outputs.S3EndpointId  # ✅ Correctly references S3EndpointStack
 
   BastionSecurityGroupId:
     Description: The ID of the Bastion Security Group
