@@ -100,8 +100,15 @@ If you see the S3 bucket list, the setup is successful!
 - Add **IAM restrictions** for fine-grained permissions
 - Configure **AWS Systems Manager (SSM)** for bastion-less access
 
-## 🔗 GitHub Repository
-Check out the full code here: [GitHub Repository](#)  
+📂 GitHub Repository
+
+Check out the full code here:
+[Amazon-S3-VPC-Access](https://github.com/NaserRaoofi/Amazon-S3-VPC-Access)
+
+📢 LinkedIn Profile
+
+Let's connect on LinkedIn:
+www.linkedin.com/in/naser-raoofi
 
 ## 📢 Let's Connect
 Share your thoughts or feedback! 🚀  
