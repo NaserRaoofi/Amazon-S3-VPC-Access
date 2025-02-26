@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Creates an S3 Gateway Endpoint.
+Description: Creates an S3 Gateway Endpoint for private EC2 instances to access S3 securely.
 
 Parameters:
   VPCId:
@@ -25,12 +25,8 @@ Resources:
         Statement:
           - Effect: Allow
             Principal: "*"
-            Action:
-              - "s3:GetObject"
-              - "s3:ListBucket"
-            Resource:
-              - "arn:aws:s3:::developer-bucket-v1"
-              - "arn:aws:s3:::developer-bucket-v1/*"
+            Action: "*"
+            Resource: "*"
       Tags:
         - Key: Name
           Value: S3GatewayEndpoint
